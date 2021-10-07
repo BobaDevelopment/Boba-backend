@@ -5,24 +5,47 @@ from flask import request, jsonify
 from app.model.dbmodel import *
 from app.utils.jwt import getToken
 from app.model.response import *
-from app import socketio
 from app.utils.jwt import *
+from app.utils.dice import *
+from app import r
 
 
 # 扔骰子
-@socketio.on("drop")
-def userDrop(data):
-    data = json.loads(data)
-    user = User.query.get(checkToken(data["jwt"])["user_id"])
+@user.route("drop", methods=["POST"])
+def userDrop():
+    jsondata = request.json
 
+    user = User.query.get(getUserId())
+    roomid = UserRoomRelation.query.filter_by(userId=user.id).first().roomId
 
+    if jsondata is None:
+        resList = randDice()
+        resLevel = dice2level(resList)
+        resName = level2name[resLevel]
+
+    else:
+        filename = jsondata.get("filename")
+        resList = detectDices(filename)
+        resLevel = dice2level(resList)
+        resName = level2name[resLevel]
+
+    prizeList = Prize.query.filter_by(roomId=roomid).all()
+    r.hincrby(roomid, "now", 1)
+    return jsonify(OK(
+        dicelist=resList,
+        resname=resName,
+        prizes=[{
+            "awardName": prize.name,
+            "avatarUrl": prize.picture,
+            "level": prize.level,
+            "awardNum": prize.count
+        } for prize in prizeList if prize.level <= resLevel]
+    ))
     # 如果没有图片，就随机
     # 如果有图片，给yolo识别返回结果
     # 更新用户rank，没有则创建
     # 返回可获得的奖品
     # 提示下一个人投
-
-
     pass
 
 
