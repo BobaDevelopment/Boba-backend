@@ -21,7 +21,8 @@ def fileUpload():
         file.filename = random_filename(str(datetime.now().timestamp()) + os.path.splitext(file.filename)[1])
         file.save(os.path.join(current_app.config['UPLOAD_PATH'], file.filename))
     return jsonify(OK(
-        url="http://" + HOST + "/file/download/" + file.filename
+        url="http://" + HOST + "/file/download/" + file.filename,
+        filename=file.filename
     ))
 
 
