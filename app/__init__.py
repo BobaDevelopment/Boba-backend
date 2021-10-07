@@ -19,7 +19,6 @@ def create_app():
 
 def register_extensions(app):
     db.init_app(app)
-    socketio.init_app(app)
 
 
 def register_blueprint(app):
