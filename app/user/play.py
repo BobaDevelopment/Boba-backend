@@ -11,35 +11,35 @@ from app import r
 
 
 # 扔骰子
-@user.route("drop", methods=["POST"])
+@user.route("/drop", methods=["POST"])
 def userDrop():
-    jsondata = request.json
-
+    filename = request.json.get("filename")
+    roomId = request.json.get("roomId")
     user = User.query.get(getUserId())
-    roomid = UserRoomRelation.query.filter_by(userId=user.id).first().roomId
-
-    if jsondata is None:
+    # roomid = UserRoomRelation.query.filter_by(userId=user.id).first().roomId
+    print(filename)
+    if filename == "no":
         resList = randDice()
         resLevel = dice2level(resList)
         resName = level2name[resLevel]
 
     else:
-        filename = jsondata.get("filename")
         resList = detectDices(filename)
         resLevel = dice2level(resList)
         resName = level2name[resLevel]
 
-    prizeList = Prize.query.filter_by(roomId=roomid).all()
-    r.hincrby(roomid, "now", 1)
+    prizeList = Prize.query.filter_by(roomId=roomId).all()
+    r.hincrby(roomId, "now", 1)
     return jsonify(OK(
         dicelist=resList,
         resname=resName,
-        prizes=[{
+        reslevel=resLevel,
+        awardList=[{
             "awardName": prize.name,
             "avatarUrl": prize.picture,
             "level": prize.level,
             "awardNum": prize.count
-        } for prize in prizeList if prize.level <= resLevel]
+        } for prize in prizeList if prize.level >= resLevel and resLevel != 0]
     ))
     # 如果没有图片，就随机
     # 如果有图片，给yolo识别返回结果

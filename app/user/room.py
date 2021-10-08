@@ -50,14 +50,24 @@ def userDeleteRoom():
 @user.route("/joinroom", methods=["POST"])
 def userJoinRoom():
     user = User.query.get(getUserId())
-    inveteCode = request.json.get("inviteCode")
-    roomId = r.get(inveteCode)
+    inviteCode = request.json.get("inviteCode")
+    print(inviteCode)
+    avatar = request.json.get("avatar")
+    username = request.json.get("username")
+    # print(inviteCode)
+    roomId = r.get(inviteCode)
+    print(roomId)
+    user.username = username
+    user.avatar = avatar
     urr = UserRoomRelation(userId=user.id, roomId=roomId)
     db.session.add(urr)
     db.session.commit()
+    room = Room.query.get(roomId)
     r.hincrby(roomId, "total", 1)
     return jsonify(OK(
-        roomId=roomId
+        roomId=int(roomId),
+        roomName=room.roomName,
+        roomCode=inviteCode
     ))
 
 
@@ -84,13 +94,26 @@ def userIsOK():
     total = r.hget(roomId, "total")
     urrList = UserRoomRelation.query.filter_by(userId=user.id, roomId=roomId).all()
     urrList = sorted(urrList, key=lambda x:x.id)
+    userList = [
+        User.query.get(urr.userId)
+        for urr in urrList
+    ]
+    userMsg = [
+        {
+            "username": user.username,
+            "avatar": user.avatar
+        }
+        for user in userList
+    ]
     print(urrList)
     print(int(now) % int(total))
     if urrList[int(now) % int(total)].userId == user.id:
         return jsonify(OK(
-            status=True
+            status=True,
+            userList=userMsg
         ))
     else:
         return jsonify(OK(
-            status=False
+            status=False,
+            userList=userMsg
         ))
