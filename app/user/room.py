@@ -76,7 +76,9 @@ def userJoinRoom():
 def userLeaveRoom():
     user = User.query.get(getUserId())
     roomId = request.json.get("roomId")
+    print(roomId)
     urr = UserRoomRelation.query.filter_by(userId=user.id, roomId=roomId).first()
+    print(urr)
     db.session.delete(urr)
     db.session.commit()
     r.hincrby(roomId, "total", -1)

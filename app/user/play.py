@@ -18,6 +18,7 @@ def userDrop():
     user = User.query.get(getUserId())
     # roomid = UserRoomRelation.query.filter_by(userId=user.id).first().roomId
     print(filename)
+    print(roomId)
     if filename == "no":
         resList = randDice()
         resLevel = dice2level(resList)
@@ -30,16 +31,19 @@ def userDrop():
 
     prizeList = Prize.query.filter_by(roomId=roomId).all()
     r.hincrby(roomId, "now", 1)
-    return jsonify(OK(
-        dicelist=resList,
-        resname=resName,
-        reslevel=resLevel,
-        awardList=[{
+    ret = [{
+            "prizeId": prize.id,
             "awardName": prize.name,
             "avatarUrl": prize.picture,
             "level": prize.level,
             "awardNum": prize.count
-        } for prize in prizeList if prize.level >= resLevel and resLevel != 0]
+        } for prize in prizeList if prize.level >= resLevel and resLevel != 0 and prize.count > 0]
+    print(ret)
+    return jsonify(OK(
+        dicelist=resList,
+        resname=resName,
+        reslevel=resLevel,
+        awardList=ret
     ))
     # 如果没有图片，就随机
     # 如果有图片，给yolo识别返回结果
@@ -54,15 +58,17 @@ def userDrop():
 def userChoosePrize():
     # 根据奖品id，判断一下是不是大于0，然后添加用户奖品relation
     prizeId = request.json.get("prizeid")
+    roomId = request.json.get("roomid")
     prize = Prize.query.get(prizeId)
     user = User.query.get(getUserId())
+    print(roomId)
 
-    urr = UserRoomRelation.query.filter_by(userId=user.id).first()
-    if urr is None or urr.roomId != prize.roomId:
-        return jsonify(Error1005())
+    # urr = UserRoomRelation.query.filter_by(userId=user.id).first()
+    # if urr is None or urr.roomId != prize.roomId:
+    #     return jsonify(Error1005())
 
     prize.count -= 1
-    upr = UserPrizeRelation(userId=user.id, prizeId=prizeId, roomId=urr.roomId)
+    upr = UserPrizeRelation(userId=user.id, prizeId=prizeId, roomId=roomId)
     db.session.add(upr)
     db.session.commit()
     return jsonify(OK())
@@ -78,7 +84,7 @@ def userRank():
 
 
 # 查看奖品
-@user.route("/leftprize", methods=["GET"])
+@user.route("/leftprize", methods=["POST"])
 def userLeftPrize():
     # 计算查prize表，返回房间内num大于0的奖品
     roomId = request.json.get("roomid")
@@ -87,25 +93,29 @@ def userLeftPrize():
         {
             "id": prize.id,
             "name": prize.name,
-            "picurl": prize.picture,
+            "picture": prize.picture,
             "level": prize.level,
+            "resname": level2name[prize.level],
             "count": prize.count
         }
-        for prize in prizeList]
-    return jsonify(ret)
+        for prize in prizeList if prize.count > 0]
+    return jsonify(OK(awardList=ret))
 
     pass
 
 
-@user.route("/myprize", methods=["GET"])
+@user.route("/myprize", methods=["POST"])
 def userMyPrize():
     # 传roomid和userid
     # 查prize表，返回用户自己在改房间奖品
     user = User.query.get(getUserId())
-    urr = UserRoomRelation.query.filter_by(userId=user.id).first()
-    if urr is None:
-        return jsonify(Error1005())
-    roomId = urr.roomId
+    roomId = request.json.get('roomid')
+    # urr = UserRoomRelation.query.filter_by(userId=user.id).first()
+    # if urr is None:
+    #     return jsonify(Error1005())
+    # roomId = urr.roomId
+    print("userid", user.id)
+    print("roomid", roomId)
     prizeIdList = [i.prizeId for i in UserPrizeRelation.query.filter_by(userId=user.id, roomId=roomId).all()]
     prizeList = [Prize.query.get(i) for i in prizeIdList]
     ret = [
@@ -114,10 +124,14 @@ def userMyPrize():
             "name": prize.name,
             "picurl": prize.picture,
             "level": prize.level,
+            "resname": level2name[prize.level],
             "count": prize.count
         }
         for prize in prizeList]
-    return jsonify(ret)
+    print(ret)
+    return jsonify(OK(
+        awardList=ret
+    ))
 
 
     pass
